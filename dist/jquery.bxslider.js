@@ -1,5 +1,18 @@
 /**
  * bxSlider v4.2.5
+ * Copyright 2013-2016 Steven Wanderski
+ * Written while drinking Belgian ales and listening to jazz
+
+ * Licensed under MIT (http://opensource.org/licenses/MIT)
+ */
+
+/* ////////////////////////////////
+// forked by @soohei
+// 2016.05.09
+//////////////////////////////// */
+
+/**
+ * bxSlider v4.2.5
  * Copyright 2013-2015 Steven Wanderski
  * Written while drinking Belgian ales and listening to jazz
 
@@ -127,6 +140,9 @@
      * Initializes namespace settings to be used throughout plugin
      */
     var init = function() {
+      // オリジナルの変数保存場所
+      slider.customVars = {};
+
       // Return if slider is already initialized
       if ($(el).data('bxSlider')) { return; }
       // merge user-supplied options with the defaults
@@ -1100,6 +1116,12 @@
       //disable slider controls while user is interacting with slides to avoid slider freeze that happens on touch devices when a slide swipe happens immediately after interacting with slider controls
       slider.controls.el.addClass('disabled');
 
+      // タッチされたら、自動再生を止める
+      if (slider.interval) {
+        el.stopAuto();
+        slider.customVars.willRestart = true;
+      }
+
       if (slider.working) {
         e.preventDefault();
         slider.controls.el.removeClass('disabled');
@@ -1171,6 +1193,26 @@
         // if horizontal, drag along x axis
         if (slider.settings.mode === 'horizontal') {
           change = touchPoints[0].pageX - slider.touch.start.x;
+
+          // 最初にユーザーのスワイプが横方向なのか、縦方向なのかを決める
+          // 縦にスクロール中は、横のスワイプ量を無視する
+          // console.log(slider.customVars.userDirection);
+          if (!slider.customVars.userDirection) {
+            if (Math.abs(yMovement) > Math.abs(xMovement) * 1.25) {
+              slider.customVars.userDirection = 'vertical';
+            }
+            else if (Math.abs(xMovement) > 10) {
+              slider.customVars.userDirection = 'horizontal';
+            }
+          }
+
+          if (slider.customVars.userDirection === 'vertical') {
+            change = 0;
+            slider.customVars.doNothingWhenTouchEnd = true;
+          }
+
+          // console.log(change, slider.touch.start.x);
+
           value = slider.touch.originalPos.left + change;
         // if vertical, drag along y axis
         } else {
@@ -1223,6 +1265,11 @@
         if (!slider.settings.infiniteLoop && ((slider.active.index === 0 && distance > 0) || (slider.active.last && distance < 0))) {
           setPositionProperty(value, 'reset', 200);
         } else {
+          // ユーザーが縦にスワイプしていた場合は、スライダーをめくらない
+          if (slider.customVars.doNothingWhenTouchEnd) {
+            distance = 0;
+            slider.customVars.doNothingWhenTouchEnd = false;
+          }
           // check if distance clears threshold
           if (Math.abs(distance) >= slider.settings.swipeThreshold) {
             if (distance < 0) {
@@ -1241,6 +1288,13 @@
       if (slider.viewport.get(0).releasePointerCapture) {
         slider.viewport.get(0).releasePointerCapture(slider.pointerId);
       }
+
+      // 止めていた自動再生を再開
+      if (slider.customVars.willRestart) {
+        el.startAuto();
+        slider.customVars.willRestart = false;
+      }
+      slider.customVars.userDirection = '';
     };
 
     /**
