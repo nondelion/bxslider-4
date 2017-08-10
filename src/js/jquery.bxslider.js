@@ -1127,6 +1127,7 @@
         slider.touch.start.y = touchPoints[0].pageY;
 
         if (slider.viewport.get(0).setPointerCapture) {
+          var chromePointerEvents = typeof PointerEvent === 'function'; if (chromePointerEvents) { if (orig.pointerId === undefined) { return; } }
           slider.pointerId = orig.pointerId;
           slider.viewport.get(0).setPointerCapture(slider.pointerId);
         }
